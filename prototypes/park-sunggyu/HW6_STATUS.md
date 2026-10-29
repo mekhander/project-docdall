@@ -16,14 +16,14 @@
 - [x] 구현 중 변경 사항을 명세서에 반영. 브라우저 앱 알림함과 Windows 시스템 팝업 구분, Telegram 고정 일정 안내 추가.
 - [x] 제출 대상 소스 및 로컬 Git 이력 12개 커밋의 일반적인 비밀키 패턴 검사에서 발견 없음. .env와 개인 상태 데이터 Git 제외 확인.
 
-## 남은 일 — 제출 필수
+## 게시 및 제출 체크리스트
 
-- [ ] 본인 GitHub 계정과 커밋 작성자 확인.
-- [ ] 최신 main 가져오기. 충돌이 있으면 본인 변경을 보존하며 해결.
-- [ ] 푸시 직전 최신 파일과 Git 이력 비밀정보 검사 재확인.
-- [ ] 본인 WhyTree Markdown, 명세서, prototypes/park-sunggyu/만 커밋. 슬라이드 PPTX는 이번 허용 커밋 경로에 포함되지 않으므로 제외.
-- [ ] main에 푸시하고 원격 파일·커밋 확인. 강제 푸시와 비밀키 차단 우회 금지. 이번 과제는 PR 불필요.
-- [ ] GitHub 제출 링크 정리.
+- [x] 본인 GitHub 계정과 커밋 작성자 확인.
+- [x] 최신 main 가져오기. 충돌이 있으면 본인 변경을 보존하며 해결.
+- [x] 푸시 직전 최신 파일과 Git 이력 비밀정보 검사 재확인.
+- [x] 본인 WhyTree Markdown, 명세서, prototypes/park-sunggyu/만 커밋. 슬라이드 PPTX는 이번 허용 커밋 경로에 포함되지 않으므로 제외.
+- [x] main에 푸시하고 원격 파일·커밋 확인. 강제 푸시와 비밀키 차단 우회 금지. 이번 과제는 PR 불필요.
+- [x] GitHub 제출 링크 정리.
 - [ ] GitHub 게시 후 kardens.io HW6 writing invitation에 아래 네 주제의 회고 작성·제출.
 
 ## 회고에 답할 내용
@@ -35,4 +35,13 @@
 
 ## 상태 해석
 
-로컬 구현과 핵심 동작 확인은 완료했다. 아직 커밋·푸시하지 않았으므로 GitHub 게시 및 과제 제출 완료 상태는 아니다. 장기적인 하루 1회 발송·빈도 복귀와 실제 집필 지속 효과는 추후 관찰 대상이다. 회고는 사용자의 실제 경험을 바탕으로 작성하며 AI가 경험을 대신 만들어내지 않는다.
+로컬 구현과 핵심 동작 확인은 완료했다. GitHub main에 게시 완료(기능 커밋 894a3e9, 계정 mekhander). kardens 회고 제출은 아직 완료하지 않았다. 장기적인 하루 1회 발송·빈도 복귀와 실제 집필 지속 효과는 추후 관찰 대상이다. 회고는 사용자의 실제 경험을 바탕으로 작성하며 AI가 경험을 대신 만들어내지 않는다.
+
+
+## GitHub 제출 링크
+
+- WhyTree: https://github.com/mekhander/project-docdall/blob/main/docs/whytree/park-sunggyu.md
+- 명세서: https://github.com/mekhander/project-docdall/blob/main/docs/specs/park-sunggyu-reminder.md
+- 프로토타입: https://github.com/mekhander/project-docdall/tree/main/prototypes/park-sunggyu
+- 구현 커밋: https://github.com/mekhander/project-docdall/commit/894a3e9
+- 회고 초안: prototypes/park-sunggyu/HW6_REFLECTION_DRAFT.md (본인 검토 및 kardens 제출 대기)

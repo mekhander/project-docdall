@@ -130,7 +130,8 @@ function parseTarget(t, current, now) {
   if (weekdays.length) {
     const target = '일월화수목금토'.indexOf(weekdays.at(-1)[1]);
     const today = new Date(day(now)+'T12:00:00Z').getUTCDay();
-    return addDays(day(now), ((target - today + 7)%7) + (t.includes('다음 주') ? 7 : 0));
+    if (t.includes('다음 주')) return addDays(day(now), 7 - ((today + 6)%7) + ((target + 6)%7));
+    return addDays(day(now), (target - today + 7)%7);
   }
   return null;
 }
@@ -160,7 +161,7 @@ export function receive(s, role, raw, now = new Date(), {transport = 'local', ev
   if (pending && (yes || no)) {
     delete s.pending[role];
     if (no) return reply('변경하지 않았어요. 기존 약속대로 둘게요.');
-    if (pending.revision !== s.revision && ['reschedule','complete'].includes(pending.kind)) return reply(`그 사이 집필 상태가 바뀌었어요. 최신 일정을 먼저 확인해주세요.\n${summary(s)}\n원하시는 변경을 다시 말씀해주실까요?`);
+    if (pending.revision !== s.revision && ['reschedule','complete','settings'].includes(pending.kind)) return reply(`그 사이 집필 상태가 바뀌었어요. 일정·연락 설정을 최신 상태로 먼저 확인해주세요.\n${summary(s)}\n원하시는 변경을 다시 말씀해주실까요?`);
     if (pending.kind === 'reschedule') {
       for (const change of pending.changes) s.chapters.find(c => c.id === change.id).due = change.after;
       s.revision++;
@@ -197,16 +198,17 @@ export function receive(s, role, raw, now = new Date(), {transport = 'local', ev
     const start = parseTime(' '+range[1]), end = parseTime(' '+range[2]);
     if (!start || !end || start >= end) return reply('시간대는 같은 날의 시작과 끝으로 알려주세요. 예: “09:00~21:00에 연락해줘”.');
     const adjust=s.settings.editorTime<start||s.settings.editorTime>=end;
-    s.pending[role] = {kind:'settings',revision:s.revision,values:{quietStart:start,quietEnd:end,...(adjust?{editorTime:start}:{})}};
-    return reply(`연락 허용 시간대를 ${start}~${end}로 정할까요?${adjust?` 편집자 연락도 이 안의 ${start}로 조정할게요.`:''} “확인” 또는 “취소”라고 답해주세요.`);
+    const adjustSchedule=s.settings.telegramScheduleEnabled&&(s.settings.browserTime<start||s.settings.browserTime>=end);
+    s.pending[role] = {kind:'settings',revision:s.revision,values:{quietStart:start,quietEnd:end,...(adjust?{editorTime:start}:{}),...(adjustSchedule?{browserTime:start}:{})}};
+    return reply(`연락 허용 시간대를 ${start}~${end}로 정할까요?${adjust?` 편집자 연락도 이 안의 ${start}로 조정할게요.`:''}${adjustSchedule?` 브라우저와 텔레그램의 고정 일정 안내도 ${start}로 옮길게요.`:''} “확인” 또는 “취소”라고 답해주세요.`);
   }
   const time = parseTime(text);
   if (time && /알림|연락|알려|시|브라우저/.test(text)) {
     const browser = text.includes('브라우저');
-    if (!browser && (time < s.settings.quietStart || time >= s.settings.quietEnd)) return reply(`지금 연락 허용 시간은 ${s.settings.quietStart}~${s.settings.quietEnd}예요. 이 안의 시간을 고르거나, 먼저 “09:00~22:00에 연락해줘”처럼 시간대를 바꿔주세요.`);
+    if ((!browser || s.settings.telegramScheduleEnabled) && (time < s.settings.quietStart || time >= s.settings.quietEnd)) return reply(`지금 연락 허용 시간은 ${s.settings.quietStart}~${s.settings.quietEnd}예요. 이 안의 시간을 고르거나, 먼저 “09:00~22:00에 연락해줘”처럼 시간대를 바꿔주세요.`);
     const values = browser ? {browserTime:time} : {editorTime:time,editorReady:true};
     s.pending[role] = {kind:'settings',revision:s.revision,values};
-    return reply(`${browser?'브라우저 일정 알림':'편집자의 연락'}을 ${time}에 할까요? “확인” 또는 “취소”라고 답해주세요.`);
+    return reply(`${browser?(s.settings.telegramScheduleEnabled?'브라우저·텔레그램 고정 일정 안내':'브라우저 일정 알림'):'편집자의 연락'}을 ${time}에 할까요? “확인” 또는 “취소”라고 답해주세요.`);
   }
   if (/소개|누구|AI|인공지능|사람/.test(text)) return reply(`${s.book.personas[role].name} · ${s.book.personas[role].bio}\n저는 가상 페르소나예요. 이번 프로토타입은 외부 AI 없이 준비된 문구와 규칙으로 대화해요.`);
   if (/시작|설정|빈도|자주|연락.*어떻게|도움/.test(text) || text.startsWith('/start')) return reply(role==='editor' ? `안녕하세요. ${s.book.title}의 담당 편집자 ${s.book.personas.editor.name}입니다.\n마감 3일 전·당일·다음 날, 언제 연락드리면 좋을까요? 저는 19:30을 제안해요. “저녁 7시 반에 연락해줘”처럼 말씀해주세요. 연락 허용 시간은 “09:00~21:00”처럼 정할 수 있어요.` : `안녕하세요. 독자팬 ${s.book.personas.fan.name}예요. 이 책의 이야기를 기다리고 있어요.\n제가 얼마나 자주 연락드리면 좋을까요? “매일”, “주 2~3회”, “일주일에 한 번” 중 편하게 말씀해주세요.`);

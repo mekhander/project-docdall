@@ -121,3 +121,38 @@ test('고정 일정은 브라우저와 독립적으로 편집자 방에 하루 �
   turn(s,'editor','이틀 미뤄줘');turn(s,'editor','확인');
   assert.ok(s.jobs.filter(j=>j.id.startsWith('schedule-telegram:')).every(j=>j.text.includes(s.chapters[0].due)));
 });
+
+
+test('다음 주 요일은 월요일 기준 다음 주 안의 날짜로 계산한다',()=>{
+  for(let offset=0;offset<7;offset++){
+    const date=addDays('2026-10-26',offset), clock=new Date(date+'T10:00:00+09:00');
+    for(const [weekday,target] of [['월요일','2026-11-02'],['일요일','2026-11-08']]){
+      const s=initialState(fixture,clock);s.chapters[0].due=date;
+      receive(s,'editor',`다음 주 ${weekday}로 미뤄줘`,clock);
+      assert.equal(s.pending.editor.changes[0].after,target,`${date}의 다음 주 ${weekday}`);
+    }
+  }
+});
+test('연락 시간대 변경은 고정 Telegram 안내 시각도 확인 후 이동한다',()=>{
+  const s=fresh();s.settings.telegramScheduleEnabled=true;s.settings.browserEnabled=true;
+  turn(s,'editor','10:00~18:00에 연락해줘');
+  assert.equal(s.settings.browserTime,'09:00');assert.equal(s.settings.quietStart,'09:00');
+  assert.match(s.messages.editor.at(-1).text,/고정 일정 안내.*10:00/);
+  turn(s,'editor','확인');assert.equal(s.settings.browserTime,'10:00');
+  assert.ok(s.jobs.filter(j=>j.id.startsWith('schedule-telegram:')||j.type==='browser').every(j=>j.at.endsWith('T01:00:00.000Z')));
+  turn(s,'editor','11:00~17:00에 연락해줘');turn(s,'editor','취소');
+  assert.equal(s.settings.browserTime,'10:00');assert.equal(s.settings.quietStart,'10:00');
+});
+test('공유 고정 시각을 바꿔 Telegram 연락 허용 시간대를 우회할 수 없다',()=>{
+  const s=fresh();s.settings.telegramScheduleEnabled=true;
+  turn(s,'editor','브라우저 알림을 오전 8시에 해줘');
+  assert.equal(s.pending.editor,undefined);assert.equal(s.settings.browserTime,'09:00');
+  assert.match(s.messages.editor.at(-1).text,/허용 시간/);
+  turn(s,'editor','브라우저 알림을 오전 10시에 해줘');turn(s,'editor','확인');
+  assert.equal(s.settings.browserTime,'10:00');
+  turn(s,'editor','브라우저 알림을 오전 11시에 해줘');
+  turn(s,'fan','12:00~18:00에 연락해줘');turn(s,'fan','확인');
+  turn(s,'editor','확인');
+  assert.equal(s.settings.browserTime,'12:00');
+  assert.equal(s.settings.quietStart,'12:00');
+});

@@ -1,0 +1,11 @@
+{
+  "name": "park-chaewon-interview",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Docdall 소재 인터뷰: 다정한 AI 편집자 프로토타입 (P0)",
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "test": "node --test"
+  }
+}

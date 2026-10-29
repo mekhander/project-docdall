@@ -44,4 +44,6 @@
 - 명세서: https://github.com/mekhander/project-docdall/blob/main/docs/specs/park-sunggyu-reminder.md
 - 프로토타입: https://github.com/mekhander/project-docdall/tree/main/prototypes/park-sunggyu
 - 구현 커밋: https://github.com/mekhander/project-docdall/commit/894a3e9
-- 회고 초안: prototypes/park-sunggyu/HW6_REFLECTION_DRAFT.md (본인 검토 및 kardens 제출 대기)
+
+
+회고 초안 파일은 사용자 요청으로 삭제했다. kardens 회고는 사용자가 본인의 경험과 표현으로 작성·제출한다. 일반 삭제이므로 이전 Git 커밋에는 파일 내용이 남는다.

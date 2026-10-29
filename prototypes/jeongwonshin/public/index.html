@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>닥달 소재 찾기</title>
+<style>
+  :root { --bg:#f6f4ef; --card:#fff; --ink:#26231f; --mute:#7a746b; --line:#e3ded4; --accent:#3b5bdb; --ok:#2b8a3e; --warn:#e67700; --hold:#868e96; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.6 -apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; }
+  header { padding:12px 20px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-bottom:1px solid var(--line); background:var(--card); }
+  header h1 { font-size:17px; margin:0; }
+  .ai-note { font-size:12px; background:#edf2ff; color:var(--accent); border-radius:999px; padding:2px 10px; }
+  header .spacer { flex:1; }
+  main { display:grid; grid-template-columns: 1fr 380px; gap:16px; padding:16px 20px; max-width:1100px; margin:0 auto; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  #chat { display:flex; flex-direction:column; min-height:60vh; }
+  #log { flex:1; overflow-y:auto; max-height:60vh; display:flex; flex-direction:column; gap:10px; padding:4px; }
+  .msg { max-width:88%; padding:8px 12px; border-radius:12px; white-space:pre-wrap; word-break:break-word; }
+  .msg.editor { background:#f1f3f5; align-self:flex-start; }
+  .msg.writer { background:var(--accent); color:#fff; align-self:flex-end; }
+  .msg.meta { background:none; color:var(--mute); font-size:13px; align-self:flex-end; padding:0 4px; }
+  .who { font-size:11px; color:var(--mute); margin-bottom:2px; }
+  .chips, .btns { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 0; }
+  button { font:inherit; border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 12px; cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--accent); }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .chip { text-align:left; background:#fff9db; border-color:#ffe066; }
+  textarea { width:100%; font:inherit; border:1px solid var(--line); border-radius:8px; padding:8px; resize:vertical; }
+  #inputRow { margin-top:12px; }
+  #inputRow .row { display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap; }
+  .error { background:#fff5f5; border:1px solid #ffa8a8; color:#c92a2a; border-radius:8px; padding:8px 12px; margin-top:10px; }
+  .loading { color:var(--mute); margin-top:8px; }
+  .loading::after { content:""; display:inline-block; width:10px; height:10px; margin-left:6px; border:2px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; vertical-align:-1px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .dim { border-top:1px solid var(--line); padding:10px 0; }
+  .dim:first-of-type { border-top:none; }
+  .dim.concept { background:#f8f9ff; border:1px solid #dbe4ff; border-radius:8px; padding:10px; margin-bottom:6px; }
+  .dim.current { box-shadow: -3px 0 0 var(--accent); padding-left:8px; }
+  .dim h3 { margin:0; font-size:14px; display:flex; gap:8px; align-items:center; }
+  .badge { font-size:11px; border-radius:999px; padding:1px 8px; color:#fff; font-weight:normal; }
+  .badge.clear { background:var(--ok); } .badge.working { background:var(--warn); }
+  .badge.held { background:var(--hold); } .badge.empty { background:#ced4da; color:#495057; }
+  .sum { margin:4px 0 0; color:var(--ink); }
+  .sum.none { color:var(--mute); }
+  .hw { margin-top:6px; font-size:13px; color:var(--warn); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .hint { font-size:13px; color:var(--mute); margin-top:6px; }
+  .final h2 { margin:0 0 4px; font-size:20px; }
+  .final .lab { font-size:12px; color:var(--mute); margin-top:12px; }
+  .final .hwtag { color:var(--warn); }
+</style>
+</head>
+<body>
+<header>
+  <h1>닥달 · 소재 찾기</h1>
+  <span class="ai-note">대화 상대는 AI 편집자입니다</span>
+  <span class="spacer"></span>
+  <button id="newBtn">새 인터뷰 시작</button>
+</header>
+<main>
+  <section class="panel" id="chat">
+    <div id="log"></div>
+    <div id="extra"></div>
+    <div id="inputRow">
+      <textarea id="input" rows="3" placeholder="여기에 답을 적어 주세요 (Cmd/Ctrl + Enter로 보내기)"></textarea>
+      <div class="row">
+        <button class="primary" id="sendBtn">보내기</button>
+        <button id="holdBtn">이 질문은 나중에</button>
+      </div>
+    </div>
+  </section>
+  <aside class="panel" id="card"></aside>
+</main>
+
+<script>
+"use strict";
+var S = null;            // 서버에서 받은 인터뷰 상태
+var busy = false;        // AI가 일하는 중
+var lastError = null;    // 마지막 AI 실패 메시지
+var editChain = Promise.resolve();  // 카드 고치기 저장을 순서대로 처리
+var KEY = "docdall.whattowrite.interviewId";
+
+function $(id) { return document.getElementById(id); }
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function lsGet() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+function lsSet(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
+
+function api(method, path, body) {
+  return fetch(path, {
+    method: method,
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined
+  }).then(function (r) { return r.json(); });
+}
+
+// 서버 응답을 반영한다. AI 실패여도 state 는 (저장된 채로) 온다.
+function take(res) {
+  if (res.state) { S = res.state; lsSet(S.id); }
+  lastError = (!res.ok && res.error && res.error.code !== "rule") ? res.error : null;
+  if (!res.ok && res.error && res.error.code === "rule") alert(res.error.message);
+  render();
+}
+
+function run(promise, clearInput) {
+  busy = true; render();
+  return promise.then(function (res) {
+    busy = false;
+    if (res.state && clearInput) $("input").value = "";
+    take(res);
+  }).catch(function () {
+    busy = false;
+    lastError = { code: "network", message: "서버에 연결하지 못했어요. 서버가 켜져 있는지 확인해 주세요." };
+    render();
+  });
+}
+
+function start() {
+  var id = lsGet();
+  if (!id) return createNew();
+  api("GET", "/api/interview/" + id).then(function (res) {
+    if (res.ok) take(res); else createNew();
+  }).catch(function () { lastError = { message: "서버에 연결하지 못했어요." }; render(); });
+}
+function createNew() { return run(api("POST", "/api/interview")); }
+
+// 카드 고치기 저장이 끝난 뒤에 서버 요청을 보낸다 (순서가 뒤바뀌지 않게)
+function afterEdits(makePromise, clearInput) {
+  if (busy) return;
+  busy = true; render();
+  editChain.then(function () { busy = false; return run(makePromise(), clearInput); });
+}
+function send() {
+  var t = $("input").value.trim();
+  if (!t || busy || !S) return;
+  afterEdits(function () { return api("POST", "/api/interview/" + S.id + "/answer", { text: t }); }, true);
+}
+function act(action, dim) {
+  if (busy || !S) return;
+  afterEdits(function () { return api("POST", "/api/interview/" + S.id + "/action", { action: action, dim: dim }); });
+}
+function retry() { afterEdits(function () { return api("POST", "/api/interview/" + S.id + "/retry"); }); }
+function pick(text) { $("input").value = text; $("input").focus(); }
+
+function saveEdit(key, value) {
+  var cur = S.dims.filter(function (d) { return d.key === key; })[0];
+  if (cur && cur.summary === value.trim()) return;  // 바뀐 게 없으면 저장하지 않는다
+  editChain = editChain.then(function () {
+    return api("POST", "/api/interview/" + S.id + "/edit", { dim: key, summary: value }).then(function (res) {
+      if (res.state) { S = res.state; renderButtonsOnly(); }
+      if (!res.ok) alert("카드 문장을 저장하지 못했어요: " + (res.error ? res.error.message : ""));
+    });
+  }).catch(function () { alert("카드 문장을 저장하지 못했어요. 서버 연결을 확인해 주세요."); });
+}
+
+function confirmPlan() {
+  afterEdits(function () { return api("POST", "/api/interview/" + S.id + "/confirm"); });
+}
+
+function render() {
+  if (!S) {
+    $("log").textContent = lastError ? "" : "불러오는 중…";
+    var ex = $("extra");
+    ex.textContent = "";
+    if (lastError) {
+      var er = el("div", "error", lastError.message || "연결하지 못했어요.");
+      var rb = el("button", "primary", "다시 연결");
+      rb.style.cssText = "display:block;margin-top:6px";
+      rb.onclick = function () { lastError = null; start(); };
+      er.appendChild(rb);
+      ex.appendChild(er);
+    }
+    $("inputRow").style.display = "none";
+    return;
+  }
+  renderChat();
+  renderCard();
+}
+
+function renderChat() {
+  var log = $("log");
+  log.textContent = "";
+  S.turns.forEach(function (t) {
+    var m = el("div", "msg " + (t.meta ? "meta" : t.role));
+    if (t.role === "editor") m.appendChild(el("div", "who", "AI 편집자"));
+    m.appendChild(document.createTextNode(t.meta ? "[" + t.text + "]" : t.text));
+    log.appendChild(m);
+  });
+  log.scrollTop = log.scrollHeight;
+
+  var extra = $("extra");
+  extra.textContent = "";
+  if (busy) extra.appendChild(el("div", "loading", "편집자가 생각하고 있어요"));
+  if (lastError || (S.pending && !busy)) {
+    var e = el("div", "error");
+    var msg = lastError ? lastError.message : "편집자 응답이 늦어지고 있어요.";
+    e.appendChild(el("div", null, msg + " 작성한 내용과 진행 상태는 저장되어 있어요."));
+    var b = el("button", "primary", "다시 시도");
+    b.style.marginTop = "6px";
+    b.onclick = retry; b.disabled = busy;
+    e.appendChild(b);
+    extra.appendChild(e);
+  }
+  var p = S.prompt;
+  if (!busy && !S.pending && p) {
+    if (p.kind === "options" && p.options.length) {
+      var chips = el("div", "chips");
+      p.options.forEach(function (o) {
+        var c = el("button", "chip", o);
+        c.onclick = function () { pick(o); };
+        chips.appendChild(c);
+      });
+      extra.appendChild(chips);
+      extra.appendChild(el("div", "hint", "고르면 아래 입력칸에 들어가요. 고쳐 쓴 뒤 보내세요."));
+    }
+    if (S.buttons.length) {
+      var bt = el("div", "btns");
+      S.buttons.forEach(function (x) {
+        var bb = el("button", x.action === "continue" || x.action === "revisit_now" ? "primary" : "", x.label);
+        bb.onclick = function () { act(x.action); };
+        bt.appendChild(bb);
+      });
+      extra.appendChild(bt);
+    }
+  }
+
+  var interviewing = S.phase === "interview";
+  var typing = interviewing && !(p && p.kind === "revisit");
+  $("inputRow").style.display = typing ? "" : "none";
+  $("sendBtn").disabled = busy || S.pending;
+  $("holdBtn").style.display = interviewing ? "" : "none";
+  $("holdBtn").disabled = busy || !S.can_hold;
+  $("input").disabled = busy || S.pending;
+}
+
+function renderButtonsOnly() {
+  // 카드 글자칸은 그대로 두고 확정 버튼만 갱신한다 (입력 중 커서를 지키려고)
+  var b = $("confirmBtn");
+  if (b) { b.disabled = !S.can_confirm || busy; }
+  var h = $("confirmHint");
+  if (h) h.textContent = S.can_confirm ? "" : (S.confirm_hint || "");
+}
+
+function renderCard() {
+  var c = $("card");
+  c.textContent = "";
+  if (S.phase === "confirmed") return renderFinal(c);
+  c.appendChild(el("h2", null, "출판 기획서 카드"));
+  c.lastChild.style.cssText = "margin:0 0 8px;font-size:16px";
+  var editable = S.phase === "review";
+  var order = S.dims.slice(); // 한 줄 콘셉트를 맨 위에 보여 준다
+  var concept = order.pop();
+  order.unshift(concept);
+  order.forEach(function (d) {
+    var box = el("div", "dim" + (d.key === "concept" ? " concept" : "") + (d.key === S.current && S.phase === "interview" ? " current" : ""));
+    var h = el("h3", null, d.name);
+    var label = { clear: "선명", working: "보완 중", held: d.homework ? "숙제" : "숙제(보류)", empty: d.homework ? "숙제" : "아직" }[d.status];
+    h.appendChild(el("span", "badge " + d.status, label));
+    box.appendChild(h);
+    if (editable) {
+      var ta = el("textarea");
+      ta.rows = 2; ta.value = d.summary;
+      ta.placeholder = "작가님의 말로 한 문장을 적어 주세요";
+      ta.onblur = function () { saveEdit(d.key, ta.value); };
+      box.appendChild(ta);
+    } else {
+      box.appendChild(el("p", "sum" + (d.summary ? "" : " none"), d.summary || "아직 비어 있어요"));
+    }
+    if (d.homework) {
+      var hw = el("div", "hw", "숙제: 아직 선명하지 않아요.");
+      var bt = el("button", null, "지금 이어서 다듬기");
+      bt.onclick = function () { act("resume_dim", d.key); };
+      bt.disabled = busy;
+      hw.appendChild(bt);
+      box.appendChild(hw);
+    }
+    c.appendChild(box);
+  });
+  if (editable) {
+    var cb = el("button", "primary", "출판 기획서 확정");
+    cb.id = "confirmBtn";
+    cb.disabled = !S.can_confirm || busy;
+    cb.onclick = confirmPlan;
+    cb.style.marginTop = "12px";
+    c.appendChild(cb);
+    var hint = el("div", "hint", S.can_confirm ? "" : (S.confirm_hint || ""));
+    hint.id = "confirmHint";
+    c.appendChild(hint);
+  } else if (S.phase === "interview") {
+    c.appendChild(el("div", "hint", "인터뷰가 끝나면 이 카드를 직접 고치고 확정할 수 있어요. 한 줄 콘셉트가 선명해야 확정됩니다."));
+  }
+}
+
+function renderFinal(c) {
+  var box = el("div", "final");
+  box.appendChild(el("div", "lab", "출판 기획서 (확정)"));
+  var concept = S.dims.filter(function (d) { return d.key === "concept"; })[0];
+  box.appendChild(el("h2", null, concept.summary));
+  S.dims.forEach(function (d) {
+    if (d.key === "concept") return;
+    box.appendChild(el("div", "lab", d.name + (d.homework ? " · 숙제" : "")));
+    if (d.homework) box.lastChild.className = "lab hwtag";
+    box.appendChild(el("p", "sum" + (d.summary ? "" : " none"), d.summary || "아직 정하지 못했어요 (숙제)"));
+  });
+  c.appendChild(box);
+}
+
+$("sendBtn").onclick = send;
+$("holdBtn").onclick = function () { act("hold"); };
+$("input").addEventListener("keydown", function (e) {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send(); }
+});
+$("newBtn").onclick = function () {
+  if (busy) return;
+  if (confirm("새 인터뷰를 시작할까요? 지금 인터뷰는 저장된 채로 남습니다.")) createNew();
+};
+start();
+</script>
+</body>
+</html>

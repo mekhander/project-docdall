@@ -74,7 +74,7 @@
   </aside>
 </div>
 <script>
-const LABELS = { material: "소재", content: "핵심 내용" };
+const LABELS = {}; // 칸 이름은 서버가 시작할 때 알려 준다 (루브릭 핵심 5개)
 const CHIP = { clear: ["또렷해요", "clear"], weak: ["다듬는 중", "weak"], empty: ["아직", ""] };
 const $ = (id) => document.getElementById(id);
 let state = null, busy = false, lastRequest = null;
@@ -171,6 +171,7 @@ $("later").addEventListener("click", () => { if (!busy && state) send({ action: 
   try {
     const res = await fetch("/api/turn", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "start" }) });
     const data = await res.json();
+    data.dims.forEach((d) => { LABELS[d.key] = d.label; });
     state = data.state; data.messages.forEach(addMsg); renderCard();
   } catch { addMsg({ role: "sys", text: "서버에 연결되지 않았어요. 서버가 켜져 있는지 확인해 주세요." }); }
   $("log").removeAttribute("aria-busy");

@@ -34,7 +34,7 @@ export const DIMS = {
 };
 
 export const GREETING =
-  "어서 오세요. 저는 Docdall 편집실의 편집자입니다.\n" +
+  "어서 오세요. 저는 Docdall 편집실에서 작가님을 맞는 AI 편집자, 소담이에요.\n" +
   "나만의 책 한 권 써 보고 싶은 마음은 있는데, 어디서부터 시작해야 할지 몰라 미뤄 두고 계셨나요? 그런 분들이 찾아오시는 곳이에요.\n" +
   "제가 한 번에 하나씩 여쭤보면서 책의 기획서를 함께 만들어 드릴게요. 대신 써 드리지는 않아요. 쓰는 사람은 언제나 작가님이니까요.";
 
@@ -83,7 +83,31 @@ export function doneMessage(state) {
   const text = marked.length
     ? `오른쪽 카드에 작가님이 들려주신 말로 채웠어요. 책갈피를 꽂아 둔 곳(${marked.map((k) => DIMS[k].label).join(", ")})은 마음이 정리되면 다시 이야기 나눠요.`
     : "오른쪽 카드에 작가님이 들려주신 말로 채웠어요. 한번 읽어 보시고, 내 말이 아닌 곳이 있으면 알려 주세요.";
-  return { role: "editor", text };
+  const msg = { role: "editor", text };
+  if (marked.length) msg.actions = marked.map((k) => ({ id: `resume:${k}`, label: `${DIMS[k].label} 이야기 이어가기` }));
+  return msg;
+}
+
+// 책갈피를 꽂아 둔 칸이 남아 있으면 대화는 끝나지 않는다. (스펙 4절 8번)
+export const marked = (state) => ORDER.filter((k) => state.dims[k].bookmark && state.dims[k].status !== "clear");
+
+// 끝난 대화에서 책갈피 칸으로 돌아온다. key를 안 주면 책갈피 꽂은 첫 칸. 돌아갈 칸이 없으면 null.
+export function reopen(state, key) {
+  const k = key || marked(state)[0];
+  if (!k || !marked(state).includes(k)) return null;
+  state.dims[k].bookmark = false;
+  state.dims[k].tries = Math.max(state.dims[k].tries, 1);
+  state.current = k;
+  state.phase = "interview";
+  return k;
+}
+
+export function resume(state, key) {
+  const k = reopen(state, key);
+  if (!k) return null;
+  const messages = [{ role: "editor", text: `다시 돌아와 주셨네요. ${DIMS[k].firstAsk}` }];
+  state.history.push(...messages);
+  return messages;
 }
 
 // 판정 결과를 칸에 반영한다. 선명인데 요약이 비면 선명으로 치지 않는다.

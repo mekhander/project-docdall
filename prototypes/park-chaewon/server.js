@@ -2,7 +2,7 @@ import http from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { startTurn, answerTurn, bookmark, keepRefining } from "./logic.js";
+import { startTurn, answerTurn, bookmark, keepRefining, resume, reopen } from "./logic.js";
 import { gemini, AiError } from "./gemini.js";
 
 const PORT = Number(process.env.PORT || 3000);
@@ -29,7 +29,14 @@ async function handleTurn(body, ai = gemini) {
   const { action, text } = body;
   if (action === "start") return startTurn();
   const state = structuredClone(body.state);
-  if (!state || state.phase !== "interview") return { error: "not_interview" };
+  if (!state) return { error: "not_interview" };
+  if (action === "resume") {
+    const messages = resume(state, String(body.dim || ""));
+    return messages ? { state, messages } : { error: "nothing_to_resume" };
+  }
+  // 끝난 대화라도 책갈피가 남아 있으면, 바로 쓴 글은 책갈피 칸의 답이 된다.
+  if (action === "answer" && state.phase === "done" && !reopen(state)) return { error: "not_interview" };
+  if (state.phase !== "interview") return { error: "not_interview" };
   if (action === "answer") {
     const t = String(text || "").trim().slice(0, 2000);
     if (!t) return { error: "empty" };

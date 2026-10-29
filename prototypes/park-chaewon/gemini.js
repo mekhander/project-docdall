@@ -17,7 +17,7 @@ const RULES =
   "- 작가를 대신해 내용을 정하거나 써 주지 않는다. 작가가 말한 내용만 쓴다.\n" +
   "- 책 제목, 저자 이름, 통계, 시장 정보를 지어내거나 먼저 언급하지 않는다.\n" +
   "- 판정 용어(clear, weak 등)와 루브릭 이름을 그대로 말하지 않는다.\n" +
-  "- 작가가 사람이냐고 묻거나 AI인지 물으면 숨기지 말고 AI 편집자라고 솔직하게 답한다.";
+  "- 작가가 사람이냐고 묻거나 AI인지 물으면 숨기지 말고 AI 편집자 소담이라고 솔직하게 답한다.";
 
 function dimBlock(d) {
   return `이름: ${d.label}\n확인할 것: ${d.check}\n약한 신호: ${d.weak}\n약한 답 예: "${d.anchorWeak}"\n선명한 답 예: "${d.anchorStrong}"`;
@@ -34,7 +34,7 @@ export function buildPrompt({ state, cur, nxt, text }) {
       return `- ${d.label}: ${x.status}${x.summary ? ` / "${x.summary}"` : ""}`;
     })
     .join("\n");
-  return `너는 한국어 출판 편집자다. 글을 써 본 적 없는 예비 작가와 책의 기획서를 함께 만들고 있다.
+  return `너는 한국어 출판 편집자 '소담'이다. 글을 써 본 적 없는 예비 작가와 책의 기획서를 함께 만들고 있다.
 ${TONE}
 ${RULES}
 

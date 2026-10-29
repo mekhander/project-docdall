@@ -8,8 +8,7 @@ DocDall — 책을 처음 쓰려는 사람을 위한 WhyTree (2026-10-28)
   - 꾸준히 쓰는 습관 = 책 완성
     - [씨앗] 글쓰기 독촉
     - [씨앗] 집필계획 및 타임라인 설정
-    - [씨앗] 동기부여
-      - (점선 상자: 새로 찾은 how) 러닝메이트 — 스펙: docs/specs/seo-euna-runningmate.md
+    - [씨앗] 동기부여 러닝메이트 — 스펙: docs/specs/seo-euna-runningmate.md
   - (점선) 내 글의 Originality (내 목소리로 쓰기) — 아래와 같은 노드
 
 - 글을 쓰면서 내 생각 정리, 자기이해

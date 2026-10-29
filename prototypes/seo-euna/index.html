@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>닥달 러닝메이트</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>닥달 <span>러닝메이트</span></h1>
+    <div id="today-badge" class="badge"></div>
+  </header>
+
+  <main id="app"></main>
+
+  <!-- 돌아옴 화면: 3일 이상 쉬었다가 열었을 때 -->
+  <div id="return" class="overlay" hidden>
+    <div class="sheet">
+      <h2 id="return-title"></h2>
+      <section>
+        <h3>그동안 메이트들은</h3>
+        <ul id="return-mates" class="mates"></ul>
+      </section>
+      <section>
+        <h3>이번 주 내 약속</h3>
+        <p id="return-goal" class="big"></p>
+      </section>
+      <button id="return-write" class="primary wide">지금 쓰기</button>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="logic.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
